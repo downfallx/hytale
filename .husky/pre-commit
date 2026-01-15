@@ -1,0 +1,12 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Auto-build TypeScript before commit
+echo "Building TypeScript..."
+npm run build
+
+# Stage the built files
+echo "Staging dist/ files..."
+git add dist/
+
+echo "✓ Build complete and dist/ files staged"
