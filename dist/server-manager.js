@@ -70,9 +70,17 @@ export class ServerManager extends EventEmitter {
                 '--assets',
                 assetsPath,
             ];
+            // Prepare environment variables
+            const env = { ...process.env };
+            // Add auth token if configured
+            const authToken = config.get('server.authToken');
+            if (authToken) {
+                env.HYTALE_SERVER_TOKEN = authToken;
+            }
             this.process = spawn('java', args, {
                 cwd: serverPath,
                 stdio: ['pipe', 'pipe', 'pipe'],
+                env,
             });
             if (!this.process.stdout || !this.process.stderr || !this.process.stdin) {
                 reject(new Error('Failed to create server process streams'));
@@ -85,8 +93,14 @@ export class ServerManager extends EventEmitter {
             });
             this.process.stderr.on('data', (data) => {
                 const message = data.toString();
-                this.log(`[ERROR] ${message}`);
-                this.emit('error', message);
+                // Don't emit warnings as errors - just log them
+                if (message.toLowerCase().includes('warning')) {
+                    this.log(`[WARNING] ${message}`);
+                }
+                else {
+                    this.log(`[ERROR] ${message}`);
+                    this.emit('error', message);
+                }
             });
             this.process.on('error', (error) => {
                 this.log(`[CRITICAL] Failed to start server: ${error.message}`);

@@ -54,11 +54,6 @@ interface BackupDetailsAnswers {
   maxBackups: number;
 }
 
-interface ServerPathAnswers {
-  serverPath: string;
-  assetsPath: string;
-}
-
 interface FinalAnswers {
   saveConfig: boolean;
 }
@@ -206,6 +201,29 @@ class SetupWizard {
         default: config.get<boolean>('server.autoRestart') || false,
       },
     ]);
+
+    // Ask about server authentication token
+    console.log();
+    console.log(chalk.gray('Server authentication token (optional - prevents "No server tokens configured" warning)'));
+    const authAnswer = await inquirer.prompt<{ authToken: string }>([
+      {
+        type: 'input',
+        name: 'authToken',
+        message: 'Server auth token (leave blank to skip):',
+        default: config.get<string>('server.authToken') || '',
+      },
+    ]);
+
+    if (authAnswer.authToken.trim()) {
+      config.set('server.authToken', authAnswer.authToken.trim());
+
+      // Save to .env file for security
+      await config.saveEnv({
+        HYTALE_SERVER_TOKEN: authAnswer.authToken.trim(),
+      });
+    }
+
+    console.log();
 
     if (answers.autoRestart) {
       const restartConfig = await inquirer.prompt<RestartConfigAnswers>([
@@ -394,21 +412,8 @@ class SetupWizard {
       // Downloader doesn't exist, need to download it
     }
 
-    console.log();
-    console.log(chalk.yellow('Hytale downloader not found.'));
-
-    const downloadAnswer = await inquirer.prompt<{ download: boolean }>([
-      {
-        type: 'confirm',
-        name: 'download',
-        message: 'Download hytale-downloader from https://downloader.hytale.com/hytale-downloader.zip?',
-        default: true,
-      },
-    ]);
-
-    if (!downloadAnswer.download) {
-      throw new Error('Cannot proceed without hytale-downloader');
-    }
+    console.log(chalk.yellow('⚠ Hytale downloader not found'));
+    console.log(chalk.cyan('Automatically downloading hytale-downloader...'));
 
     // Create downloader directory
     await fs.mkdir(downloaderDir, { recursive: true });
@@ -492,10 +497,15 @@ class SetupWizard {
       throw new Error('Downloaded server files not found');
     }
 
-    const spinner = ora('Extracting server files...').start();
+    console.log(chalk.cyan('Extracting server files (1.4 GB - this may take 5-10 minutes on Windows/WSL)...'));
+    console.log(chalk.gray('Please wait - unzip is working in the background'));
+    console.log();
+
+    const spinner = ora('Decompressing files...').start();
     try {
-      // Extract to server path
-      execSync(`unzip -o "${downloadedZip}" -d "${serverPath}"`, { stdio: 'pipe' });
+      // Extract to server path - stdio: 'inherit' shows unzip progress
+      execSync(`unzip -o "${downloadedZip}" -d "${serverPath}"`, { stdio: 'inherit' });
+      spinner.stop();
 
       // Check if files were extracted to Server/ subdirectory
       const serverSubdir = path.join(serverPath, 'Server');
@@ -542,47 +552,17 @@ class SetupWizard {
     console.log();
 
     const serverPath = path.join(__dirname, '..', 'hytale-server');
-    const defaultAssetsPath = path.join(serverPath, 'assets.zip');
+    const assetsPath = path.join(serverPath, 'assets.zip');
 
-    const answers = await inquirer.prompt<ServerPathAnswers>([
-      {
-        type: 'input',
-        name: 'serverPath',
-        message: 'Path to Hytale server files:',
-        default: serverPath,
-        validate: async (input: string) => {
-          try {
-            await fs.access(input);
-            return true;
-          } catch {
-            // Directory doesn't exist, we'll create it
-            return true;
-          }
-        },
-      },
-      {
-        type: 'input',
-        name: 'assetsPath',
-        message: 'Path to Hytale assets.zip:',
-        default: defaultAssetsPath,
-        validate: async (input: string) => {
-          if (!input.endsWith('.zip')) {
-            return 'Assets path must point to a .zip file';
-          }
-          return true;
-        },
-      },
-    ]);
-
-    config.set('server.serverPath', answers.serverPath);
-    config.set('server.assetsPath', answers.assetsPath);
+    // Use default paths automatically
+    config.set('server.serverPath', serverPath);
+    config.set('server.assetsPath', assetsPath);
 
     // Create server directory if it doesn't exist
-    await fs.mkdir(answers.serverPath, { recursive: true });
+    await fs.mkdir(serverPath, { recursive: true });
 
     // Check if HytaleServer.jar and assets exist
-    const serverJar = path.join(answers.serverPath, 'HytaleServer.jar');
-    const assetsFile = answers.assetsPath;
+    const serverJar = path.join(serverPath, 'HytaleServer.jar');
 
     let serverJarFound = false;
     let assetsFound = false;
@@ -596,36 +576,46 @@ class SetupWizard {
     }
 
     try {
-      await fs.access(assetsFile);
+      await fs.access(assetsPath);
       assetsFound = true;
       console.log(chalk.green('✓ Assets file found'));
     } catch {
       console.log(chalk.yellow('⚠ Assets file not found'));
     }
 
-    // If files are missing, offer to download them
+    // If files are missing, automatically download them with a single confirmation
     if (!serverJarFound || !assetsFound) {
       console.log();
-      const downloadAnswer = await inquirer.prompt<{ downloadNow: boolean }>([
+      console.log(chalk.cyan('Missing server files will be automatically downloaded.'));
+      console.log(chalk.gray(`Server path: ${serverPath}`));
+      console.log(chalk.gray(`Assets path: ${assetsPath}`));
+      console.log();
+
+      const confirmAnswer = await inquirer.prompt<{ autoInstall: boolean }>([
         {
           type: 'confirm',
-          name: 'downloadNow',
-          message: 'Download Hytale server files now?',
+          name: 'autoInstall',
+          message: 'Proceed with automatic download and installation?',
           default: true,
         },
       ]);
 
-      if (downloadAnswer.downloadNow) {
+      if (confirmAnswer.autoInstall) {
         try {
+          console.log();
+          console.log(chalk.cyan('Starting automatic installation...'));
+          console.log();
+
           // Setup hytale-downloader (download if needed)
           const downloaderBinary = await this.setupHytaleDownloader();
 
           // Run the downloader to get server files
-          await this.runHytaleDownloader(downloaderBinary, answers.serverPath);
+          await this.runHytaleDownloader(downloaderBinary, serverPath);
 
           // Extract the downloaded files
-          await this.extractServerFiles(answers.serverPath);
+          await this.extractServerFiles(serverPath);
 
+          console.log();
           console.log(chalk.green('✓ Server files are ready!'));
         } catch (error) {
           console.log();
@@ -637,9 +627,12 @@ class SetupWizard {
         console.log();
         console.log(chalk.yellow('Skipping download. You will need to manually download the server files.'));
         console.log(chalk.gray('Required files:'));
-        console.log(chalk.gray(`  - HytaleServer.jar in: ${answers.serverPath}`));
-        console.log(chalk.gray(`  - assets.zip at: ${answers.assetsPath}`));
+        console.log(chalk.gray(`  - HytaleServer.jar in: ${serverPath}`));
+        console.log(chalk.gray(`  - assets.zip at: ${assetsPath}`));
       }
+    } else {
+      console.log();
+      console.log(chalk.green('✓ All required server files are present!'));
     }
   }
 
@@ -715,6 +708,12 @@ class SetupWizard {
 
         try {
           await serverManager.initialize();
+
+          // Add error handler to prevent unhandled errors
+          serverManager.on('error', (error) => {
+            console.log(chalk.red(`Server error: ${error}`));
+          });
+
           await serverManager.start();
           console.log(chalk.green('✓ Server started successfully!'));
           console.log();

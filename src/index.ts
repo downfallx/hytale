@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import readline from 'readline';
 import config from './config.js';
 import serverManager, { PlayerEvent, StopEvent } from './server-manager.js';
 
@@ -42,7 +43,34 @@ async function main(): Promise<void> {
     console.log(chalk.green.bold('✓ Server started successfully!'));
     console.log();
     console.log(chalk.gray('Press Ctrl+C to stop the server'));
+    console.log(chalk.gray('Type commands and press Enter to send them to the server'));
     console.log();
+
+    // Setup interactive console for server commands
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      prompt: chalk.cyan('> '),
+    });
+
+    rl.prompt();
+
+    rl.on('line', (line: string) => {
+      const command = line.trim();
+      if (command) {
+        try {
+          serverManager.sendCommand(command);
+          console.log(chalk.gray(`Sent command: ${command}`));
+        } catch (error) {
+          console.error(chalk.red(`Failed to send command: ${(error as Error).message}`));
+        }
+      }
+      rl.prompt();
+    });
+
+    rl.on('close', () => {
+      shutdown();
+    });
 
     // Setup event handlers for logging
     serverManager.on('ready', () => {

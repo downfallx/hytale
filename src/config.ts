@@ -22,6 +22,7 @@ export interface ServerConfig {
   javaArgs: string;
   serverPath: string;
   assetsPath: string;
+  authToken?: string;
 }
 
 export interface DiscordConfig {

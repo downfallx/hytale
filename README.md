@@ -330,6 +330,14 @@ This project uses TypeScript but ships pre-built JavaScript files for instant us
 - `npm run build` - Build once
 - `npm run clean` - Remove dist/ folder
 
+**Note for Windows developers:**
+On Windows, the first run after building may be slow (20-30 seconds) due to Windows Defender scanning. This does NOT affect Linux users. To speed up development:
+```powershell
+# Run as Administrator to exclude directories from Windows Defender:
+Add-MpPreference -ExclusionPath "C:\path\to\hytale-server-manager\dist"
+Add-MpPreference -ExclusionPath "C:\path\to\hytale-server-manager\node_modules"
+```
+
 ## License
 
 This project is licensed under the MIT License.
