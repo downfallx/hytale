@@ -1,4 +1,5 @@
 import EventEmitter from 'events';
+import readline from 'readline';
 export interface ServerStatus {
     isRunning: boolean;
     uptime: number;
@@ -40,8 +41,14 @@ export declare class ServerManager extends EventEmitter {
     private restartTimer;
     private logStream;
     private playerCount;
+    private rl;
     private static readonly SCREEN_NAME;
     get isRunning(): boolean;
+    /**
+     * Set the readline interface for proper output handling.
+     * When set, all server output will clear/redraw the prompt.
+     */
+    setReadline(rl: readline.Interface | null): void;
     /**
      * Check if we're already inside a screen session
      */

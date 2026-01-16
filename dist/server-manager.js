@@ -3,6 +3,7 @@ import EventEmitter from 'events';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import readline from 'readline';
 import config from './config.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,9 +14,17 @@ export class ServerManager extends EventEmitter {
     restartTimer = null;
     logStream = null;
     playerCount = 0;
+    rl = null;
     static SCREEN_NAME = 'hytale';
     get isRunning() {
         return this.isRunningFlag;
+    }
+    /**
+     * Set the readline interface for proper output handling.
+     * When set, all server output will clear/redraw the prompt.
+     */
+    setReadline(rl) {
+        this.rl = rl;
     }
     /**
      * Check if we're already inside a screen session
@@ -261,7 +270,16 @@ export class ServerManager extends EventEmitter {
         if (this.logStream) {
             await this.logStream.write(logMessage);
         }
-        console.log(message);
+        // Print while preserving readline prompt
+        if (this.rl && process.stdout.isTTY) {
+            readline.clearLine(process.stdout, 0);
+            readline.cursorTo(process.stdout, 0);
+            console.log(message);
+            this.rl.prompt(true);
+        }
+        else {
+            console.log(message);
+        }
     }
     getStatus() {
         return {

@@ -3,6 +3,7 @@ import EventEmitter from 'events';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import readline from 'readline';
 import config from './config.js';
 import { FileHandle } from 'fs/promises';
 
@@ -61,10 +62,19 @@ export class ServerManager extends EventEmitter {
   private restartTimer: NodeJS.Timeout | null = null;
   private logStream: FileHandle | null = null;
   private playerCount: number = 0;
+  private rl: readline.Interface | null = null;
   private static readonly SCREEN_NAME = 'hytale';
 
   get isRunning(): boolean {
     return this.isRunningFlag;
+  }
+
+  /**
+   * Set the readline interface for proper output handling.
+   * When set, all server output will clear/redraw the prompt.
+   */
+  setReadline(rl: readline.Interface | null): void {
+    this.rl = rl;
   }
 
   /**
@@ -354,7 +364,15 @@ export class ServerManager extends EventEmitter {
       await this.logStream.write(logMessage);
     }
 
-    console.log(message);
+    // Print while preserving readline prompt
+    if (this.rl && process.stdout.isTTY) {
+      readline.clearLine(process.stdout, 0);
+      readline.cursorTo(process.stdout, 0);
+      console.log(message);
+      this.rl.prompt(true);
+    } else {
+      console.log(message);
+    }
   }
 
   getStatus(): ServerStatus {
