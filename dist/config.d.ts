@@ -21,6 +21,10 @@ export interface HytaleServerConfig {
     PlayerStorage: {
         Type: string;
     };
+    AuthCredentialStore: {
+        Type: string;
+        Path: string;
+    };
 }
 export interface HytaleWorldConfig {
     Version: number;

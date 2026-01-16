@@ -8,6 +8,12 @@ console.log(chalk.blue.bold('╚════════════════
 console.log();
 async function main() {
     try {
+        // Check if we should launch inside a screen session
+        const launchedInScreen = await serverManager.launchInScreen();
+        if (launchedInScreen) {
+            // We launched inside screen or attached to an existing one, exit this process
+            process.exit(0);
+        }
         // Load configuration
         console.log(chalk.blue('Loading configuration...'));
         await config.load();
@@ -18,6 +24,12 @@ async function main() {
             console.log(chalk.yellow('⚠ No configuration found. Please run the setup wizard first:'));
             console.log(chalk.cyan('  npm run setup'));
             process.exit(1);
+        }
+        // Show screen session info if we're inside one
+        if (process.env.STY) {
+            console.log(chalk.gray(`Running inside screen session: ${process.env.STY}`));
+            console.log(chalk.gray('Use Ctrl+A, D to detach. Reattach with: screen -r hytale'));
+            console.log();
         }
         // Initialize server manager
         console.log(chalk.blue('Initializing server manager...'));

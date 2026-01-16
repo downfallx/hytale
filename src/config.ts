@@ -34,6 +34,10 @@ export interface HytaleServerConfig {
   PlayerStorage: {
     Type: string;
   };
+  AuthCredentialStore: {
+    Type: string;
+    Path: string;
+  };
 }
 
 // Matches the real Hytale world config.json format (universe/worlds/{world}/config.json)
@@ -156,7 +160,7 @@ export interface EnvVariables {
 const DEFAULT_CONFIG: Config = {
   server: {
     name: 'Hytale Server',
-    motd: '',
+    motd: 'Welcome to Hytale!',
     password: '',
     maxPlayers: 100,
     maxViewRadius: 32,
@@ -339,6 +343,7 @@ export class ConfigManager {
       Mods: existingConfig.Mods || {},
       DisplayTmpTagsInStrings: existingConfig.DisplayTmpTagsInStrings ?? false,
       PlayerStorage: existingConfig.PlayerStorage || { Type: 'Hytale' },
+      AuthCredentialStore: existingConfig.AuthCredentialStore || { Type: 'Encrypted', Path: 'auth.enc' },
     };
 
     await fs.writeFile(configPath, JSON.stringify(hytaleConfig, null, 2), 'utf-8');

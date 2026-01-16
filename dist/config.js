@@ -9,7 +9,7 @@ const ENV_PATH = path.join(__dirname, '..', '.env');
 const DEFAULT_CONFIG = {
     server: {
         name: 'Hytale Server',
-        motd: '',
+        motd: 'Welcome to Hytale!',
         password: '',
         maxPlayers: 100,
         maxViewRadius: 32,
@@ -183,6 +183,7 @@ export class ConfigManager {
             Mods: existingConfig.Mods || {},
             DisplayTmpTagsInStrings: existingConfig.DisplayTmpTagsInStrings ?? false,
             PlayerStorage: existingConfig.PlayerStorage || { Type: 'Hytale' },
+            AuthCredentialStore: existingConfig.AuthCredentialStore || { Type: 'Encrypted', Path: 'auth.enc' },
         };
         await fs.writeFile(configPath, JSON.stringify(hytaleConfig, null, 2), 'utf-8');
     }

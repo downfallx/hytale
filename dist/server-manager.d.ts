@@ -40,7 +40,21 @@ export declare class ServerManager extends EventEmitter {
     private restartTimer;
     private logStream;
     private playerCount;
+    private static readonly SCREEN_NAME;
     get isRunning(): boolean;
+    /**
+     * Check if we're already inside a screen session
+     */
+    private isInsideScreen;
+    /**
+     * Check if the hytale screen session already exists
+     */
+    private screenExists;
+    /**
+     * Start or attach to a screen session and run the server inside it
+     * Returns true if we launched inside screen (caller should exit)
+     */
+    launchInScreen(): Promise<boolean>;
     initialize(): Promise<void>;
     private ensureDirectories;
     private setupLogging;

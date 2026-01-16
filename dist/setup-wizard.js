@@ -81,7 +81,7 @@ class SetupWizard {
                 type: 'input',
                 name: 'motd',
                 message: 'Message of the day (MOTD):',
-                default: config.get('server.motd') || '',
+                default: config.get('server.motd') || 'Welcome to Hytale!',
             },
             {
                 type: 'password',
@@ -110,13 +110,6 @@ class SetupWizard {
                 },
             },
             {
-                type: 'list',
-                name: 'gameMode',
-                message: 'Default game mode:',
-                choices: ['Adventure', 'Creative', 'Survival'],
-                default: config.get('server.gameMode') || 'Adventure',
-            },
-            {
                 type: 'input',
                 name: 'defaultWorld',
                 message: 'Default world name:',
@@ -135,7 +128,6 @@ class SetupWizard {
         config.set('server.password', answers.password);
         config.set('server.maxPlayers', answers.maxPlayers);
         config.set('server.maxViewRadius', answers.maxViewRadius);
-        config.set('server.gameMode', answers.gameMode);
         config.set('server.defaultWorld', answers.defaultWorld);
         this.answers = { ...this.answers, ...answers };
     }
@@ -666,15 +658,10 @@ class SetupWizard {
                 console.log(chalk.gray('Note: Make sure the server files are in place before starting.'));
                 console.log();
                 try {
-                    await serverManager.initialize();
-                    // Add error handler to prevent unhandled errors
-                    serverManager.on('error', (error) => {
-                        console.log(chalk.red(`Server error: ${error}`));
-                    });
-                    await serverManager.start();
-                    console.log(chalk.green('✓ Server started successfully!'));
-                    console.log();
-                    console.log(chalk.gray('To stop the server, press Ctrl+C'));
+                    // Launch in a screen session
+                    await serverManager.launchInScreen();
+                    // Server is now running in screen, exit the wizard
+                    process.exit(0);
                 }
                 catch (error) {
                     console.log(chalk.red(`Failed to start server: ${error.message}`));

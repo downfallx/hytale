@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess, execSync, spawnSync } from 'child_process';
 import EventEmitter from 'events';
 import fs from 'fs/promises';
 import path from 'path';
@@ -61,9 +61,68 @@ export class ServerManager extends EventEmitter {
   private restartTimer: NodeJS.Timeout | null = null;
   private logStream: FileHandle | null = null;
   private playerCount: number = 0;
+  private static readonly SCREEN_NAME = 'hytale';
 
   get isRunning(): boolean {
     return this.isRunningFlag;
+  }
+
+  /**
+   * Check if we're already inside a screen session
+   */
+  private isInsideScreen(): boolean {
+    return !!process.env.STY;
+  }
+
+  /**
+   * Check if the hytale screen session already exists
+   */
+  private screenExists(): boolean {
+    try {
+      const result = execSync('screen -list', { stdio: 'pipe' }).toString();
+      return result.includes(ServerManager.SCREEN_NAME);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Start or attach to a screen session and run the server inside it
+   * Returns true if we launched inside screen (caller should exit)
+   */
+  async launchInScreen(): Promise<boolean> {
+    if (this.isInsideScreen()) {
+      // Already in a screen session, proceed normally
+      return false;
+    }
+
+    // Check if hytale screen already exists
+    if (this.screenExists()) {
+      console.log(`Screen session '${ServerManager.SCREEN_NAME}' already exists.`);
+      console.log(`Attaching to it... (use Ctrl+A, D to detach)`);
+      console.log();
+
+      // Attach to existing screen - this replaces the current process
+      spawnSync('screen', ['-r', ServerManager.SCREEN_NAME], { stdio: 'inherit' });
+      return true;
+    }
+
+    // Create new screen session and run npm start inside it
+    console.log(`Creating screen session '${ServerManager.SCREEN_NAME}'...`);
+    console.log('Use Ctrl+A, D to detach from the screen.');
+    console.log(`Use 'screen -r ${ServerManager.SCREEN_NAME}' to reattach later.`);
+    console.log();
+
+    // Get the path to the project root
+    const projectRoot = path.join(__dirname, '..');
+
+    // Launch screen with npm start
+    spawnSync('screen', ['-S', ServerManager.SCREEN_NAME, 'npm', 'run', 'start'], {
+      stdio: 'inherit',
+      cwd: projectRoot,
+    });
+
+    return true;
   }
 
   async initialize(): Promise<void> {
