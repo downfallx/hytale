@@ -96,7 +96,7 @@ export class ServerManager extends EventEmitter {
     }
 
     const serverPath = config.get<string>('server.serverPath');
-    const assetsPath = config.get<string>('server.assetsPath');
+    const assetsPath = path.join(serverPath, 'Assets.zip');
     const javaArgs = config.get<string>('server.javaArgs').split(' ');
     const serverJar = path.join(serverPath, 'HytaleServer.jar');
 

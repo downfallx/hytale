@@ -43,7 +43,7 @@ export class ServerManager extends EventEmitter {
             throw new Error('Server is already running');
         }
         const serverPath = config.get('server.serverPath');
-        const assetsPath = config.get('server.assetsPath');
+        const assetsPath = path.join(serverPath, 'Assets.zip');
         const javaArgs = config.get('server.javaArgs').split(' ');
         const serverJar = path.join(serverPath, 'HytaleServer.jar');
         // Check if server jar exists
