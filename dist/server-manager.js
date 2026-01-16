@@ -219,8 +219,8 @@ export class ServerManager extends EventEmitter {
             playerCount: this.playerCount,
             config: {
                 name: config.get('server.name'),
-                port: config.get('server.port'),
                 maxPlayers: config.get('server.maxPlayers'),
+                gameMode: config.get('server.gameMode') || 'Adventure',
             },
         };
     }

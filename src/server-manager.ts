@@ -15,8 +15,8 @@ export interface ServerStatus {
   playerCount: number;
   config: {
     name: string;
-    port: number;
     maxPlayers: number;
+    gameMode: string;
   };
 }
 
@@ -305,8 +305,8 @@ export class ServerManager extends EventEmitter {
       playerCount: this.playerCount,
       config: {
         name: config.get<string>('server.name'),
-        port: config.get<number>('server.port'),
         maxPlayers: config.get<number>('server.maxPlayers'),
+        gameMode: config.get<string>('server.gameMode') || 'Adventure',
       },
     };
   }

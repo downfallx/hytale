@@ -17,11 +17,23 @@ const __dirname = path.dirname(__filename);
 
 interface BasicServerAnswers {
   serverName: string;
-  port: number;
-  maxPlayers: number;
   motd: string;
-  difficulty: 'peaceful' | 'easy' | 'normal' | 'hard';
-  pvp: boolean;
+  password: string;
+  maxPlayers: number;
+  maxViewRadius: number;
+  gameMode: 'Adventure' | 'Creative' | 'Survival';
+  defaultWorld: string;
+}
+
+interface WorldSettingsAnswers {
+  pvpEnabled: boolean;
+  fallDamageEnabled: boolean;
+  npcSpawning: boolean;
+  customSeed: boolean;
+}
+
+interface SeedAnswers {
+  seed: number;
 }
 
 interface AdvancedServerAnswers {
@@ -78,6 +90,7 @@ class SetupWizard {
 
     await this.checkPrerequisites();
     await this.basicServerSetup();
+    await this.worldSetup();
     await this.advancedServerSetup();
     await this.discordSetup();
     await this.backupSetup();
@@ -127,56 +140,124 @@ class SetupWizard {
         type: 'input',
         name: 'serverName',
         message: 'Server name:',
-        default: config.get<string>('server.name') || 'My Hytale Server',
+        default: config.get<string>('server.name') || 'Hytale Server',
         validate: (input: string) => input.trim().length > 0 || 'Server name cannot be empty',
-      },
-      {
-        type: 'number',
-        name: 'port',
-        message: 'Server port:',
-        default: config.get<number>('server.port') || 25565,
-        validate: (input: number) => {
-          const num = parseInt(input.toString());
-          return (num >= 1024 && num <= 65535) || 'Port must be between 1024 and 65535';
-        },
-      },
-      {
-        type: 'number',
-        name: 'maxPlayers',
-        message: 'Maximum players:',
-        default: config.get<number>('server.maxPlayers') || 20,
-        validate: (input: number) => {
-          const num = parseInt(input.toString());
-          return (num > 0 && num <= 100) || 'Max players must be between 1 and 100';
-        },
       },
       {
         type: 'input',
         name: 'motd',
         message: 'Message of the day (MOTD):',
-        default: config.get<string>('server.motd') || 'Welcome to my Hytale Server!',
+        default: config.get<string>('server.motd') || '',
+      },
+      {
+        type: 'password',
+        name: 'password',
+        message: 'Server password (leave empty for no password):',
+        default: config.get<string>('server.password') || '',
+      },
+      {
+        type: 'number',
+        name: 'maxPlayers',
+        message: 'Maximum players:',
+        default: config.get<number>('server.maxPlayers') || 100,
+        validate: (input: number) => {
+          const num = parseInt(input.toString());
+          return (num > 0 && num <= 1000) || 'Max players must be between 1 and 1000';
+        },
+      },
+      {
+        type: 'number',
+        name: 'maxViewRadius',
+        message: 'Maximum view radius (chunks):',
+        default: config.get<number>('server.maxViewRadius') || 32,
+        validate: (input: number) => {
+          const num = parseInt(input.toString());
+          return (num >= 8 && num <= 64) || 'View radius must be between 8 and 64';
+        },
       },
       {
         type: 'list',
-        name: 'difficulty',
-        message: 'Server difficulty:',
-        choices: ['peaceful', 'easy', 'normal', 'hard'] as const,
-        default: config.get<string>('server.difficulty') || 'normal',
+        name: 'gameMode',
+        message: 'Default game mode:',
+        choices: ['Adventure', 'Creative', 'Survival'] as const,
+        default: config.get<string>('server.gameMode') || 'Adventure',
       },
       {
-        type: 'confirm',
-        name: 'pvp',
-        message: 'Enable PvP?',
-        default: config.get<boolean>('server.pvp') !== undefined ? config.get<boolean>('server.pvp') : true,
+        type: 'input',
+        name: 'defaultWorld',
+        message: 'Default world name:',
+        default: config.get<string>('server.defaultWorld') || 'default',
+        validate: (input: string) => {
+          if (input.trim().length === 0) return 'World name cannot be empty';
+          if (!/^[a-zA-Z0-9_-]+$/.test(input)) return 'World name can only contain letters, numbers, underscores, and hyphens';
+          return true;
+        },
       },
     ]);
 
     config.set('server.name', answers.serverName);
-    config.set('server.port', answers.port);
-    config.set('server.maxPlayers', answers.maxPlayers);
     config.set('server.motd', answers.motd);
-    config.set('server.difficulty', answers.difficulty);
-    config.set('server.pvp', answers.pvp);
+    config.set('server.password', answers.password);
+    config.set('server.maxPlayers', answers.maxPlayers);
+    config.set('server.maxViewRadius', answers.maxViewRadius);
+    config.set('server.gameMode', answers.gameMode);
+    config.set('server.defaultWorld', answers.defaultWorld);
+
+    this.answers = { ...this.answers, ...answers };
+  }
+
+  private async worldSetup(): Promise<void> {
+    console.log();
+    console.log(chalk.cyan.bold('=== World Configuration ==='));
+    console.log(chalk.gray('These settings apply to the default world.'));
+    console.log();
+
+    const answers = await inquirer.prompt<WorldSettingsAnswers>([
+      {
+        type: 'confirm',
+        name: 'pvpEnabled',
+        message: 'Enable PvP?',
+        default: config.get<boolean>('world.pvpEnabled') ?? false,
+      },
+      {
+        type: 'confirm',
+        name: 'fallDamageEnabled',
+        message: 'Enable fall damage?',
+        default: config.get<boolean>('world.fallDamageEnabled') ?? true,
+      },
+      {
+        type: 'confirm',
+        name: 'npcSpawning',
+        message: 'Enable NPC spawning?',
+        default: config.get<boolean>('world.npcSpawning') ?? true,
+      },
+      {
+        type: 'confirm',
+        name: 'customSeed',
+        message: 'Use a custom world seed?',
+        default: false,
+      },
+    ]);
+
+    config.set('world.pvpEnabled', answers.pvpEnabled);
+    config.set('world.fallDamageEnabled', answers.fallDamageEnabled);
+    config.set('world.npcSpawning', answers.npcSpawning);
+
+    if (answers.customSeed) {
+      const seedAnswer = await inquirer.prompt<SeedAnswers>([
+        {
+          type: 'number',
+          name: 'seed',
+          message: 'World seed:',
+          default: Math.floor(Math.random() * 1000000000000),
+          validate: (input: number) => {
+            const num = parseInt(input.toString());
+            return !isNaN(num) || 'Seed must be a number';
+          },
+        },
+      ]);
+      config.set('world.seed', seedAnswer.seed);
+    }
 
     this.answers = { ...this.answers, ...answers };
   }
@@ -202,28 +283,6 @@ class SetupWizard {
       },
     ]);
 
-    // Ask about server authentication token
-    console.log();
-    console.log(chalk.gray('Server authentication token (optional - prevents "No server tokens configured" warning)'));
-    const authAnswer = await inquirer.prompt<{ authToken: string }>([
-      {
-        type: 'input',
-        name: 'authToken',
-        message: 'Server auth token (leave blank to skip):',
-        default: config.get<string>('server.authToken') || '',
-      },
-    ]);
-
-    if (authAnswer.authToken.trim()) {
-      config.set('server.authToken', authAnswer.authToken.trim());
-
-      // Save to .env file for security
-      await config.saveEnv({
-        HYTALE_SERVER_TOKEN: authAnswer.authToken.trim(),
-      });
-    }
-
-    console.log();
 
     if (answers.autoRestart) {
       const restartConfig = await inquirer.prompt<RestartConfigAnswers>([
@@ -645,11 +704,22 @@ class SetupWizard {
 
     console.log(chalk.bold('Server Configuration:'));
     console.log(`  Name: ${chalk.green(cfg.server.name)}`);
-    console.log(`  Port: ${chalk.green(cfg.server.port)}`);
+    console.log(`  MOTD: ${chalk.green(cfg.server.motd || '(none)')}`);
+    console.log(`  Password: ${chalk.green(cfg.server.password ? '(set)' : '(none)')}`);
     console.log(`  Max Players: ${chalk.green(cfg.server.maxPlayers)}`);
-    console.log(`  Difficulty: ${chalk.green(cfg.server.difficulty)}`);
-    console.log(`  PvP: ${chalk.green(cfg.server.pvp ? 'Enabled' : 'Disabled')}`);
+    console.log(`  Max View Radius: ${chalk.green(cfg.server.maxViewRadius)} chunks`);
+    console.log(`  Game Mode: ${chalk.green(cfg.server.gameMode)}`);
+    console.log(`  Default World: ${chalk.green(cfg.server.defaultWorld)}`);
     console.log(`  Auto Restart: ${chalk.green(cfg.server.autoRestart ? 'Enabled' : 'Disabled')}`);
+
+    console.log();
+    console.log(chalk.bold('World Configuration:'));
+    console.log(`  PvP: ${chalk.green(cfg.world.pvpEnabled ? 'Enabled' : 'Disabled')}`);
+    console.log(`  Fall Damage: ${chalk.green(cfg.world.fallDamageEnabled ? 'Enabled' : 'Disabled')}`);
+    console.log(`  NPC Spawning: ${chalk.green(cfg.world.npcSpawning ? 'Enabled' : 'Disabled')}`);
+    if (cfg.world.seed) {
+      console.log(`  Seed: ${chalk.green(cfg.world.seed)}`);
+    }
 
     if (cfg.discord.enabled) {
       console.log();
@@ -684,10 +754,25 @@ class SetupWizard {
       const spinner = ora('Saving configuration...').start();
       try {
         await config.save();
-        spinner.succeed(chalk.green('Configuration saved successfully!'));
+        spinner.succeed(chalk.green('Manager configuration saved!'));
       } catch (error) {
         spinner.fail(chalk.red(`Failed to save configuration: ${(error as Error).message}`));
         return;
+      }
+
+      // Write the Hytale server and world config files
+      const hytaleSpinner = ora('Writing Hytale server configs...').start();
+      try {
+        await config.writeHytaleConfigs();
+        hytaleSpinner.succeed(chalk.green('Hytale server and world configs written!'));
+
+        const serverPath = config.get<string>('server.serverPath');
+        const defaultWorld = config.get<string>('server.defaultWorld') || 'default';
+        console.log(chalk.gray(`  → ${path.join(serverPath, 'config.json')}`));
+        console.log(chalk.gray(`  → ${path.join(serverPath, 'universe', 'worlds', defaultWorld, 'config.json')}`));
+      } catch (error) {
+        hytaleSpinner.fail(chalk.red(`Failed to write Hytale configs: ${(error as Error).message}`));
+        console.log(chalk.yellow('Note: Hytale configs will be created when the server first runs.'));
       }
 
       console.log();

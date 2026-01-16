@@ -331,7 +331,7 @@ class DiscordBot {
         const embed = new EmbedBuilder()
             .setTitle('📊 Server Information')
             .setColor(0x0099ff)
-            .addFields({ name: 'Server Name', value: config.get('server.name'), inline: false }, { name: 'Status', value: status.isRunning ? '🟢 Online' : '🔴 Offline', inline: true }, { name: 'Port', value: config.get('server.port').toString(), inline: true }, { name: 'Max Players', value: config.get('server.maxPlayers').toString(), inline: true }, { name: 'Difficulty', value: config.get('server.difficulty'), inline: true }, { name: 'PvP', value: config.get('server.pvp') ? 'Enabled' : 'Disabled', inline: true }, { name: 'Uptime', value: this.formatUptime(status.uptime), inline: true })
+            .addFields({ name: 'Server Name', value: config.get('server.name'), inline: false }, { name: 'Status', value: status.isRunning ? '🟢 Online' : '🔴 Offline', inline: true }, { name: 'Max Players', value: config.get('server.maxPlayers').toString(), inline: true }, { name: 'Game Mode', value: config.get('server.gameMode') || 'Adventure', inline: true }, { name: 'Default World', value: config.get('server.defaultWorld') || 'default', inline: true }, { name: 'PvP', value: config.get('world.pvpEnabled') ? 'Enabled' : 'Disabled', inline: true }, { name: 'Uptime', value: this.formatUptime(status.uptime), inline: true })
             .setTimestamp();
         await interaction.reply({ embeds: [embed] });
     }

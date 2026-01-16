@@ -32,8 +32,9 @@ async function main(): Promise<void> {
     console.log();
     console.log(chalk.bold('Server Configuration:'));
     console.log(`  Name: ${chalk.cyan(config.get<string>('server.name'))}`);
-    console.log(`  Port: ${chalk.cyan(config.get<number>('server.port'))}`);
     console.log(`  Max Players: ${chalk.cyan(config.get<number>('server.maxPlayers'))}`);
+    console.log(`  Game Mode: ${chalk.cyan(config.get<string>('server.gameMode') || 'Adventure')}`);
+    console.log(`  Default World: ${chalk.cyan(config.get<string>('server.defaultWorld') || 'default')}`);
     console.log();
 
     // Start server

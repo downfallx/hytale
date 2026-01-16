@@ -8,18 +8,24 @@ const ENV_PATH = path.join(__dirname, '..', '.env');
 // Default configuration
 const DEFAULT_CONFIG = {
     server: {
-        name: 'My Hytale Server',
-        port: 25565,
-        maxPlayers: 20,
-        difficulty: 'normal',
-        gamemode: 'survival',
-        pvp: true,
-        motd: 'Welcome to my Hytale Server!',
+        name: 'Hytale Server',
+        motd: '',
+        password: '',
+        maxPlayers: 100,
+        maxViewRadius: 32,
+        defaultWorld: 'default',
+        gameMode: 'Adventure',
         autoRestart: false,
         restartInterval: 21600000, // 6 hours in milliseconds
         javaArgs: '-Xmx2G -Xms1G',
         serverPath: './hytale-server',
-        assetsPath: './hytale-server/assets.zip',
+        assetsPath: './hytale-server/Assets.zip',
+    },
+    world: {
+        pvpEnabled: false,
+        fallDamageEnabled: true,
+        npcSpawning: true,
+        gameplayConfig: 'Default',
     },
     discord: {
         enabled: false,
@@ -67,6 +73,7 @@ export class ConfigManager {
     mergeConfig(defaults, loaded) {
         return {
             server: { ...defaults.server, ...loaded.server },
+            world: { ...defaults.world, ...loaded.world },
             discord: { ...defaults.discord, ...loaded.discord },
             notifications: { ...defaults.notifications, ...loaded.notifications },
             backup: { ...defaults.backup, ...loaded.backup },
@@ -140,6 +147,114 @@ export class ConfigManager {
             return `${key}=${needsQuotes ? `"${value}"` : value}`;
         });
         await fs.writeFile(ENV_PATH, lines.join('\n'), 'utf-8');
+    }
+    /**
+     * Write the Hytale server config.json file
+     * This is the main server configuration at hytale-server/config.json
+     */
+    async writeHytaleServerConfig() {
+        const serverPath = this.get('server.serverPath');
+        const configPath = path.join(serverPath, 'config.json');
+        // Read existing config to preserve unknown fields
+        let existingConfig = {};
+        try {
+            const data = await fs.readFile(configPath, 'utf-8');
+            existingConfig = JSON.parse(data);
+        }
+        catch {
+            // File doesn't exist, start fresh
+        }
+        const hytaleConfig = {
+            Version: existingConfig.Version || 3,
+            ServerName: this.get('server.name'),
+            MOTD: this.get('server.motd') || '',
+            Password: this.get('server.password') || '',
+            MaxPlayers: this.get('server.maxPlayers'),
+            MaxViewRadius: this.get('server.maxViewRadius') || 32,
+            LocalCompressionEnabled: existingConfig.LocalCompressionEnabled ?? false,
+            Defaults: {
+                World: this.get('server.defaultWorld') || 'default',
+                GameMode: this.get('server.gameMode') || 'Adventure',
+            },
+            ConnectionTimeouts: existingConfig.ConnectionTimeouts || { JoinTimeouts: {} },
+            RateLimit: existingConfig.RateLimit || {},
+            Modules: existingConfig.Modules || {},
+            LogLevels: existingConfig.LogLevels || {},
+            Mods: existingConfig.Mods || {},
+            DisplayTmpTagsInStrings: existingConfig.DisplayTmpTagsInStrings ?? false,
+            PlayerStorage: existingConfig.PlayerStorage || { Type: 'Hytale' },
+        };
+        await fs.writeFile(configPath, JSON.stringify(hytaleConfig, null, 2), 'utf-8');
+    }
+    /**
+     * Write the Hytale world config.json file
+     * This is the per-world configuration at hytale-server/universe/worlds/{worldName}/config.json
+     */
+    async writeHytaleWorldConfig(worldName) {
+        const serverPath = this.get('server.serverPath');
+        const targetWorld = worldName || this.get('server.defaultWorld') || 'default';
+        const worldDir = path.join(serverPath, 'universe', 'worlds', targetWorld);
+        const configPath = path.join(worldDir, 'config.json');
+        // Ensure world directory exists
+        await fs.mkdir(worldDir, { recursive: true });
+        // Read existing config to preserve UUID and other generated fields
+        let existingConfig = {};
+        try {
+            const data = await fs.readFile(configPath, 'utf-8');
+            existingConfig = JSON.parse(data);
+        }
+        catch {
+            // File doesn't exist, start fresh
+        }
+        // Generate seed if not specified
+        const seed = this.get('world.seed') || existingConfig.Seed || Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+        const worldConfig = {
+            Version: existingConfig.Version || 4,
+            UUID: existingConfig.UUID, // Preserve existing UUID if any
+            Seed: seed,
+            WorldGen: existingConfig.WorldGen || { Type: 'Hytale', Name: 'Default' },
+            WorldMap: existingConfig.WorldMap || { Type: 'WorldGen' },
+            ChunkStorage: existingConfig.ChunkStorage || { Type: 'Hytale' },
+            ChunkConfig: existingConfig.ChunkConfig || {},
+            IsTicking: existingConfig.IsTicking ?? true,
+            IsBlockTicking: existingConfig.IsBlockTicking ?? true,
+            IsPvpEnabled: this.get('world.pvpEnabled') ?? false,
+            IsFallDamageEnabled: this.get('world.fallDamageEnabled') ?? true,
+            IsGameTimePaused: existingConfig.IsGameTimePaused ?? false,
+            GameTime: existingConfig.GameTime,
+            ClientEffects: existingConfig.ClientEffects || {
+                SunHeightPercent: 100.0,
+                SunAngleDegrees: 0.0,
+                BloomIntensity: 0.3,
+                BloomPower: 8.0,
+                SunIntensity: 0.25,
+                SunshaftIntensity: 0.3,
+                SunshaftScaleFactor: 4.0,
+            },
+            RequiredPlugins: existingConfig.RequiredPlugins || {},
+            IsSpawningNPC: this.get('world.npcSpawning') ?? true,
+            IsSpawnMarkersEnabled: existingConfig.IsSpawnMarkersEnabled ?? true,
+            IsAllNPCFrozen: existingConfig.IsAllNPCFrozen ?? false,
+            GameplayConfig: this.get('world.gameplayConfig') || 'Default',
+            IsCompassUpdating: existingConfig.IsCompassUpdating ?? true,
+            IsSavingPlayers: existingConfig.IsSavingPlayers ?? true,
+            IsSavingChunks: existingConfig.IsSavingChunks ?? true,
+            SaveNewChunks: existingConfig.SaveNewChunks ?? true,
+            IsUnloadingChunks: existingConfig.IsUnloadingChunks ?? true,
+            IsObjectiveMarkersEnabled: existingConfig.IsObjectiveMarkersEnabled ?? true,
+            DeleteOnUniverseStart: existingConfig.DeleteOnUniverseStart ?? false,
+            DeleteOnRemove: existingConfig.DeleteOnRemove ?? false,
+            ResourceStorage: existingConfig.ResourceStorage || { Type: 'Hytale' },
+            Plugin: existingConfig.Plugin || {},
+        };
+        await fs.writeFile(configPath, JSON.stringify(worldConfig, null, 2), 'utf-8');
+    }
+    /**
+     * Write both Hytale server and world configs
+     */
+    async writeHytaleConfigs(worldName) {
+        await this.writeHytaleServerConfig();
+        await this.writeHytaleWorldConfig(worldName);
     }
 }
 export default new ConfigManager();

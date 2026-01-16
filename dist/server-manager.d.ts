@@ -5,8 +5,8 @@ export interface ServerStatus {
     playerCount: number;
     config: {
         name: string;
-        port: number;
         maxPlayers: number;
+        gameMode: string;
     };
 }
 export interface PlayerEvent {

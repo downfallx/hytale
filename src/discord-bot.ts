@@ -417,10 +417,10 @@ class DiscordBot {
       .addFields(
         { name: 'Server Name', value: config.get<string>('server.name'), inline: false },
         { name: 'Status', value: status.isRunning ? '🟢 Online' : '🔴 Offline', inline: true },
-        { name: 'Port', value: config.get<number>('server.port').toString(), inline: true },
         { name: 'Max Players', value: config.get<number>('server.maxPlayers').toString(), inline: true },
-        { name: 'Difficulty', value: config.get<string>('server.difficulty'), inline: true },
-        { name: 'PvP', value: config.get<boolean>('server.pvp') ? 'Enabled' : 'Disabled', inline: true },
+        { name: 'Game Mode', value: config.get<string>('server.gameMode') || 'Adventure', inline: true },
+        { name: 'Default World', value: config.get<string>('server.defaultWorld') || 'default', inline: true },
+        { name: 'PvP', value: config.get<boolean>('world.pvpEnabled') ? 'Enabled' : 'Disabled', inline: true },
         { name: 'Uptime', value: this.formatUptime(status.uptime), inline: true }
       )
       .setTimestamp();

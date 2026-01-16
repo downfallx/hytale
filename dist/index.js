@@ -27,8 +27,9 @@ async function main() {
         console.log();
         console.log(chalk.bold('Server Configuration:'));
         console.log(`  Name: ${chalk.cyan(config.get('server.name'))}`);
-        console.log(`  Port: ${chalk.cyan(config.get('server.port'))}`);
         console.log(`  Max Players: ${chalk.cyan(config.get('server.maxPlayers'))}`);
+        console.log(`  Game Mode: ${chalk.cyan(config.get('server.gameMode') || 'Adventure')}`);
+        console.log(`  Default World: ${chalk.cyan(config.get('server.defaultWorld') || 'default')}`);
         console.log();
         // Start server
         console.log(chalk.blue('Starting Hytale server...'));
